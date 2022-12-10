@@ -1,5 +1,17 @@
 # Change Log
 
+## 0.3.3 - 2022-12-06
+
+🐛 FIX: span with end of inline before attrs
+
+## 0.3.2 - 2022-12-05
+
+- ✨ NEW: Port `admon` plugin by @KyleKing ([#53](https://github.com/executablebooks/mdit-py-plugins/pull/53))
+- ✨ NEW: Add span parsing to inline attributes plugin by @chrisjsewell ([#55](https://github.com/executablebooks/mdit-py-plugins/pull/55))
+- 🐛 FIX: Task list item marker can be followed by any GFM whitespace by @hukkin in ([#42](https://github.com/executablebooks/mdit-py-plugins/pull/42))
+
+**Full Changelog**: [v0.3.1...v0.4.0](https://github.com/executablebooks/mdit-py-plugins/compare/v0.3.1...v0.4.0)
+
 ## 0.3.1 - 2022-09-27
 
 - ⬆️ UPGRADE: Drop Python 3.6, support Python 3.10

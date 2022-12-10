@@ -6,12 +6,14 @@ import pytest
 
 from mdit_py_plugins.attrs import attrs_plugin
 
-FIXTURE_PATH = Path(__file__).parent.joinpath("fixtures", "attrs.md")
+FIXTURE_PATH = Path(__file__).parent.joinpath("fixtures")
 
 
-@pytest.mark.parametrize("line,title,input,expected", read_fixture_file(FIXTURE_PATH))
-def test_fixture(line, title, input, expected):
-    md = MarkdownIt("commonmark").use(attrs_plugin)
+@pytest.mark.parametrize(
+    "line,title,input,expected", read_fixture_file(FIXTURE_PATH / "attrs.md")
+)
+def test_attrs(line, title, input, expected):
+    md = MarkdownIt("commonmark").use(attrs_plugin, spans=True)
     md.options["xhtmlOut"] = False
     text = md.render(input)
     print(text)
