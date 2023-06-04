@@ -1,11 +1,12 @@
 from typing import List, Optional
 
 from markdown_it import MarkdownIt
-from markdown_it.common.utils import isSpace
 from markdown_it.rules_block import StateBlock
 from markdown_it.rules_core import StateCore
 from markdown_it.rules_inline import StateInline
 from markdown_it.token import Token
+
+from mdit_py_plugins.utils import is_code_block
 
 from .parse import ParseError, parse
 
@@ -111,7 +112,7 @@ def _find_opening(tokens: List[Token], index: int) -> Optional[int]:
 
 
 def _span_rule(state: StateInline, silent: bool):
-    if state.srcCharCode[state.pos] != 0x5B:  # /* [ */
+    if state.src[state.pos] != "[":
         return False
 
     maximum = state.posMax
@@ -139,7 +140,7 @@ def _span_rule(state: StateInline, silent: bool):
         state.pos = labelStart
         state.posMax = labelEnd
         token = state.push("span_open", "span", 1)
-        token.attrs = attrs
+        token.attrs = attrs  # type: ignore
         state.md.inline.tokenize(state)
         token = state.push("span_close", "span", -1)
 
@@ -156,24 +157,23 @@ def _attr_block_rule(
     The block must be a single line that begins with a `{`, after three or less spaces,
     and end with a `}` followed by any number if spaces.
     """
-    # if it's indented more than 3 spaces, it should be a code block
-    if state.sCount[startLine] - state.blkIndent >= 4:
+    if is_code_block(state, startLine):
         return False
 
     pos = state.bMarks[startLine] + state.tShift[startLine]
     maximum = state.eMarks[startLine]
 
     # if it doesn't start with a {, it's not an attribute block
-    if state.srcCharCode[pos] != 0x7B:  # /* { */
+    if state.src[pos] != "{":
         return False
 
     # find first non-space character from the right
-    while maximum > pos and isSpace(state.srcCharCode[maximum - 1]):
+    while maximum > pos and state.src[maximum - 1] in (" ", "\t"):
         maximum -= 1
     # if it doesn't end with a }, it's not an attribute block
     if maximum <= pos:
         return False
-    if state.srcCharCode[maximum - 1] != 0x7D:  # /* } */
+    if state.src[maximum - 1] != "}":
         return False
 
     try:

@@ -4,11 +4,13 @@
 from typing import List, Optional
 
 from markdown_it import MarkdownIt
-from markdown_it.common.utils import isSpace
 from markdown_it.helpers import parseLinkLabel
 from markdown_it.rules_block import StateBlock
+from markdown_it.rules_core import StateCore
 from markdown_it.rules_inline import StateInline
 from markdown_it.token import Token
+
+from mdit_py_plugins.utils import is_code_block
 
 
 def footnote_plugin(md: MarkdownIt):
@@ -57,6 +59,9 @@ def footnote_plugin(md: MarkdownIt):
 def footnote_def(state: StateBlock, startLine: int, endLine: int, silent: bool):
     """Process footnote block definition"""
 
+    if is_code_block(state, startLine):
+        return False
+
     start = state.bMarks[startLine] + state.tShift[startLine]
     maximum = state.eMarks[startLine]
 
@@ -64,23 +69,23 @@ def footnote_def(state: StateBlock, startLine: int, endLine: int, silent: bool):
     if start + 4 > maximum:
         return False
 
-    if state.srcCharCode[start] != 0x5B:  # /* [ */
+    if state.src[start] != "[":
         return False
-    if state.srcCharCode[start + 1] != 0x5E:  # /* ^ */
+    if state.src[start + 1] != "^":
         return False
 
     pos = start + 2
     while pos < maximum:
-        if state.srcCharCode[pos] == 0x20:
+        if state.src[pos] == " ":
             return False
-        if state.srcCharCode[pos] == 0x5D:  # /* ] */
+        if state.src[pos] == "]":
             break
         pos += 1
 
     if pos == start + 2:  # no empty footnote labels
         return False
     pos += 1
-    if pos >= maximum or state.srcCharCode[pos] != 0x3A:  # /* : */
+    if pos >= maximum or state.src[pos] != ":":
         return False
     if silent:
         return True
@@ -108,13 +113,12 @@ def footnote_def(state: StateBlock, startLine: int, endLine: int, silent: bool):
     )
 
     while pos < maximum:
-        ch = state.srcCharCode[pos]
+        ch = state.src[pos]
 
-        if isSpace(ch):
-            if ch == 0x09:
-                offset += 4 - offset % 4
-            else:
-                offset += 1
+        if ch == "\t":
+            offset += 4 - offset % 4
+        elif ch == " ":
+            offset += 1
 
         else:
             break
@@ -131,7 +135,7 @@ def footnote_def(state: StateBlock, startLine: int, endLine: int, silent: bool):
     if state.sCount[startLine] < state.blkIndent:
         state.sCount[startLine] += state.blkIndent
 
-    state.md.block.tokenize(state, startLine, endLine, True)
+    state.md.block.tokenize(state, startLine, endLine)
 
     state.parentType = oldParentType
     state.blkIndent -= 4
@@ -157,9 +161,9 @@ def footnote_inline(state: StateInline, silent: bool):
 
     if start + 2 >= maximum:
         return False
-    if state.srcCharCode[start] != 0x5E:  # /* ^ */
+    if state.src[start] != "^":
         return False
-    if state.srcCharCode[start + 1] != 0x5B:  # /* [ */
+    if state.src[start + 1] != "[":
         return False
 
     labelStart = start + 2
@@ -203,18 +207,18 @@ def footnote_ref(state: StateInline, silent: bool):
 
     if "footnotes" not in state.env or "refs" not in state.env["footnotes"]:
         return False
-    if state.srcCharCode[start] != 0x5B:  # /* [ */
+    if state.src[start] != "[":
         return False
-    if state.srcCharCode[start + 1] != 0x5E:  # /* ^ */
+    if state.src[start + 1] != "^":
         return False
 
     pos = start + 2
     while pos < maximum:
-        if state.srcCharCode[pos] == 0x20:
+        if state.src[pos] == " ":
             return False
-        if state.srcCharCode[pos] == 0x0A:
+        if state.src[pos] == "\n":
             return False
-        if state.srcCharCode[pos] == 0x5D:  # /* ] */
+        if state.src[pos] == "]":
             break
         pos += 1
 
@@ -250,7 +254,7 @@ def footnote_ref(state: StateInline, silent: bool):
     return True
 
 
-def footnote_tail(state: StateBlock, *args, **kwargs):
+def footnote_tail(state: StateCore) -> None:
     """Post-processing step, to move footnote tokens to end of the token stream.
 
     Also removes un-referenced tokens.

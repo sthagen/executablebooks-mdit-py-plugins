@@ -2,6 +2,8 @@
 from markdown_it import MarkdownIt
 from markdown_it.rules_block import StateBlock
 
+from mdit_py_plugins.utils import is_code_block
+
 
 def deflist_plugin(md: MarkdownIt):
     """Plugin ported from
@@ -22,7 +24,6 @@ def deflist_plugin(md: MarkdownIt):
         ~ Definition 2b
 
     """
-    isSpace = md.utils.isSpace
 
     def skipMarker(state: StateBlock, line: int):
         """Search `[:~][\n ]`, returns next pos after marker on success or -1 on fail."""
@@ -33,9 +34,9 @@ def deflist_plugin(md: MarkdownIt):
             return -1
 
         # Check bullet
-        marker = state.srcCharCode[start]
+        marker = state.src[start]
         start += 1
-        if marker != 0x7E and marker != 0x3A:  # ~ :
+        if marker != "~" and marker != ":":
             return -1
 
         pos = state.skipSpaces(start)
@@ -66,6 +67,9 @@ def deflist_plugin(md: MarkdownIt):
             i += 1
 
     def deflist(state: StateBlock, startLine: int, endLine: int, silent: bool):
+        if is_code_block(state, startLine):
+            return False
+
         if silent:
             # quirk: validation mode validates a dd block only, not a whole deflist
             if state.ddIndent < 0:
@@ -134,13 +138,10 @@ def deflist_plugin(md: MarkdownIt):
                 )
 
                 while pos < maximum:
-                    ch = state.srcCharCode[pos]
-
-                    if isSpace(ch):
-                        if ch == 0x09:
-                            offset += 4 - offset % 4
-                        else:
-                            offset += 1
+                    if state.src[pos] == "\t":
+                        offset += 4 - offset % 4
+                    elif state.src[pos] == " ":
+                        offset += 1
                     else:
                         break
 
@@ -160,7 +161,7 @@ def deflist_plugin(md: MarkdownIt):
                 state.tight = True
                 state.parentType = "deflist"
 
-                state.md.block.tokenize(state, ddLine, endLine, True)
+                state.md.block.tokenize(state, ddLine, endLine)
 
                 # If any of list item is tight, mark list as tight
                 if not state.tight or prevEmptyEnd:
